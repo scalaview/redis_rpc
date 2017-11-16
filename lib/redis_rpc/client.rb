@@ -27,7 +27,14 @@ module RedisRpc
 
             on.message do |channel, args|
               @logger.info("##{channel}: #{args}")
-              @callback.exec_callback(args)
+              begin
+                _args = JSON.parse(args, symbolize_names: true)
+                @logger.error(ArgumentError.new("miss method uuid")) and return if _args[:uuid].nil?
+                @callback.exec_callback(_args)
+                @res.sync_callback(_args)
+              rescue Exception => e
+                @logger.error(e)
+              end
             end
             on.unsubscribe do |channel, subscriptions|
               @logger.info("Unsubscribed from ##{channel} (#{subscriptions} subscriptions)")
@@ -58,13 +65,10 @@ module RedisRpc
         params: args,
         uuid: SecureRandom.uuid
       }
-      @callback.push(request[:uuid], block)
+      @callback.push(request[:uuid], block) if !block.nil?
       @res.publish(request)
     end
 
   end
-
-
-
 
 end

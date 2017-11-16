@@ -31,10 +31,19 @@ client = RedisRpc::Client.new("redis://127.0.0.1:6379/0", "pub_channel", "sub_ch
 
 Be careful two channel on client is opposite of server.
 
-### call server method as DRb
+### call server method as DRb async
 
 ```ruby
 client.get_current_time{|err, time| puts time}
 ```
 
 The result will return in the block you give. And the first one is the error if the function rescue it. The return value only support callback.
+
+
+### call server method as DRb sync
+
+```ruby
+client.get_current_time.sync
+```
+
+The result wait until return.
