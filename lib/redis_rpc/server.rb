@@ -12,8 +12,7 @@ module RedisRpc
       @redis = Redis.new(url: url)
       @sub_channel = sub_channel
       @pub_channel = pub_channel
-      @logic = Logic.new(url, front_object, pub_channel)
-      init_log(level)
+      @logic = Logic.new(url, front_object, pub_channel, init_log(level))
       standalone ? standalone_exec : exec
     end
 
@@ -25,23 +24,14 @@ module RedisRpc
 
     def exec
       begin
-        @redis.subscribe(@sub_channel, RedisRpc::EXCEPTION_CHANNEL) do |on|
+        @redis.subscribe(@sub_channel) do |on|
           on.subscribe do |channel, subscriptions|
             @logger.info("Subscribed to ##{channel} (#{subscriptions} subscriptions)")
           end
 
           on.message do |channel, args|
             @logger.info("##{channel}: #{args}")
-            case channel.to_sym
-            when RedisRpc::EXCEPTION_CHANNEL
-              @logger.error("exception: #{args}")
-            else
-              begin
-                @logic.exec(args)
-              rescue Exception => e
-                @logger.error(e.message.to_s)
-              end
-            end
+            @logic.exec(args)
           end
           on.unsubscribe do |channel, subscriptions|
             @logger.info("Unsubscribed from ##{channel} (#{subscriptions} subscriptions)")

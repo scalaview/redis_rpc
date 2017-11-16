@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'redis_rpc'
-  s.version     = '0.0.1'
+  s.version     = '0.0.2'
   s.date        = '2017-11-16'
   s.summary     = 'redis rpc'
   s.description = "use redis sub/pub work as rpc"

@@ -5,24 +5,29 @@ module RedisRpc
 
       attr_accessor :res
 
-      def initialize(url, callback, channel)
+      def initialize(url, callback, channel, logger)
         @redis = Redis.new(url: url)
-        @res = Response.new(@redis, channel)
+        @logger = logger
+        @res = Response.new(@redis, channel, logger)
         @callback = callback
       end
 
       def exec(args)
         begin
           _args = JSON.parse(args, symbolize_names: true)
-          raise(ArgumentError, "miss callback uuid")  if _args[:uuid].nil?
-          raise(ArgumentError, "miss method name")  if _args[:method].nil?
+          @logger.error(ArgumentError.new("miss method name or uuid")) and return if _args[:uuid].nil? || _args[:method].nil?
 
           result = @callback.send(_args[:method], *_args[:params])
           @res.publish({uuid: _args[:uuid], _method: _args[:method], result: result})
         rescue Exception => e
-          @res.catch(e)
+          if defined?(_args)
+            @res.catch(_args[:uuid], e)
+          else
+            @logger.error(e)
+          end
         end
       end
+
   end
 
 end
