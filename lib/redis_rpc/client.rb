@@ -8,11 +8,12 @@ module RedisRpc
 
   class Client
 
-    def initialize(url, sub_channel, pub_channel, level: Logger::WARN)
+    def initialize(url, sub_channel, pub_channel, level: Logger::WARN, secret_key: nil)
       @redis = Redis.new(url: url)
       @sub_channel = sub_channel
       @pub_channel = pub_channel
-      @res = Response.new(Redis.new(url: url), pub_channel, init_log(level))
+      @parser = Parser.new(secret_key)
+      @res = Response.new(Redis.new(url: url), pub_channel, init_log(level), @parser)
       @callback = Callback.new(init_log(level))
       exec
     end
@@ -28,7 +29,7 @@ module RedisRpc
             on.message do |channel, args|
               @logger.info("##{channel}: #{args}")
               begin
-                _args = JSON.parse(args, symbolize_names: true)
+                _args = @parser.parse(args)
                 @logger.error(ArgumentError.new("miss method uuid")) and return if _args[:uuid].nil?
                 @callback.exec_callback(_args)
                 @res.sync_callback(_args)

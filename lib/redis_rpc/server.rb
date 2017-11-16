@@ -3,16 +3,18 @@ require 'logger'
 require "redis_rpc/client.rb"
 require "redis_rpc/version.rb"
 require "redis_rpc/logic.rb"
+require "redis_rpc/parser.rb"
 
 module RedisRpc
 
   class Server
 
-    def initialize(url, sub_channel, pub_channel, front_object, level: Logger::WARN, standalone: true)
+    def initialize(url, sub_channel, pub_channel, front_object, level: Logger::WARN, standalone: true, secret_key: nil)
       @redis = Redis.new(url: url)
       @sub_channel = sub_channel
       @pub_channel = pub_channel
-      @logic = Logic.new(url, front_object, pub_channel, init_log(level))
+      @parser = Parser.new(secret_key)
+      @logic = Logic.new(url, front_object, pub_channel, init_log(level), @parser)
       standalone ? standalone_exec : exec
     end
 
