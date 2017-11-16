@@ -13,7 +13,7 @@ module RedisRpc
       begin
         # {uuid: uuid, _method: method, result: result, error: error}
         callback = @funs.delete args[:uuid]
-        callback.call(FunctionCallbackError.new(args[:error]), args[:result]) if !callback.nil?
+        callback.call(args[:error].nil? ? nil : FunctionCallbackError.new(args[:error]), args[:result]) if !callback.nil?
       rescue Exception => e
         @logger.error(e)
       end
