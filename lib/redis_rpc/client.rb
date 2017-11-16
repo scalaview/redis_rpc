@@ -28,6 +28,7 @@ module RedisRpc
             on.message do |channel, args|
               @logger.info("##{channel}: #{args}")
               @callback.exec_callback(args)
+              @res.sync_callback(arg)
             end
             on.unsubscribe do |channel, subscriptions|
               @logger.info("Unsubscribed from ##{channel} (#{subscriptions} subscriptions)")
@@ -58,13 +59,14 @@ module RedisRpc
         params: args,
         uuid: SecureRandom.uuid
       }
+
+      puts request
+      puts " block #{block}"
       @callback.push(request[:uuid], block)
-      @res.publish(request)
+      return @res.publish(request)
     end
 
   end
-
-
 
 
 end
