@@ -27,7 +27,8 @@ module RedisRpc
 
     def catch(uuid, e)
       @logger.error("#{uuid}: #{e}")
-      publish({uuid: uuid, error: e})
+      request_str = @parser.pack({uuid: uuid, error: e}.to_json)
+      @redis.publish(@channel, request_str)
     end
 
   end
