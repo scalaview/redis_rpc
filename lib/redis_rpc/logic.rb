@@ -27,6 +27,8 @@ module RedisRpc
             @logger.error(e)
           end
         end
+      rescue Exception => e
+        @logger.error(e)
       end
 
   end
