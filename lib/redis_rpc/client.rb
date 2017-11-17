@@ -69,7 +69,8 @@ module RedisRpc
         uuid: SecureRandom.uuid
       }
       @callback.push(request[:uuid], block) if !block.nil?
-      @res.publish(request, @timeout)
+      _sync_handler = @res.publish(request, @timeout)
+      return block.nil? ? _sync_handler : nil
     end
 
   end
