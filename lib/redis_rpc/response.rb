@@ -35,7 +35,7 @@ module RedisRpc
 
   class SyncHandler
 
-    SLEEP_TIME = 0.1
+    SLEEP_TIME = 0.01
 
     def initialize(redis, uuid, _method, secret_key, timeout=30)
       @redis = redis
