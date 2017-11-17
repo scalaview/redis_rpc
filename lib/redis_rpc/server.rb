@@ -9,10 +9,11 @@ module RedisRpc
 
   class Server
 
-    def initialize(url, sub_channel, pub_channel, front_object, level: Logger::WARN, standalone: true, secret_key: nil)
+    def initialize(url, sub_channel, pub_channel, front_object, level: Logger::WARN, standalone: true, secret_key: nil, timeout: 10.0)
       @redis = Redis.new(url: url)
       @sub_channel = sub_channel
       @pub_channel = pub_channel
+      @timeout = timeout
       @parser = Parser.new(secret_key)
       @logic = Logic.new(url, front_object, pub_channel, init_log(level), @parser)
       standalone ? standalone_exec : exec
@@ -33,7 +34,7 @@ module RedisRpc
 
           on.message do |channel, args|
             @logger.info("##{channel}: #{args}")
-            @logic.exec(args)
+            @logic.exec(args, @timeout)
           end
           on.unsubscribe do |channel, subscriptions|
             @logger.info("Unsubscribed from ##{channel} (#{subscriptions} subscriptions)")

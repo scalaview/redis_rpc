@@ -15,7 +15,7 @@ class TimeServer
 
 end
 
-rps = RedisRpc::Server.new("redis://127.0.0.1:6379/0", "sub_channel", "pub_channel", TimeServer.new, level: Logger::WARN, standalone: false)
+server = RedisRpc.server("redis://127.0.0.1:6379/0", "secret_sub_channel", "secret_pub_channel", TimeServer.new, standalone: false, secret_key: "43468eeb-035e-4653-9a67-f200d1592faf", timeout: 3)
 
 ```
 
@@ -25,7 +25,7 @@ standalone: defualt is true that will create a thread to handle this server.
 ### Client
 
 ```ruby
-client = RedisRpc::Client.new("redis://127.0.0.1:6379/0", "pub_channel", "sub_channel")
+client = RedisRpc.client("redis://127.0.0.1:6379/0", "secret_pub_channel", "secret_sub_channel", secret_key: "43468eeb-035e-4653-9a67-f200d1592faf", timeout: 3)
 
 ```
 

@@ -8,10 +8,13 @@ module RedisRpc
 
   class Client
 
-    def initialize(url, sub_channel, pub_channel, level: Logger::WARN, secret_key: nil)
+    attr_accessor :handler
+
+    def initialize(url, sub_channel, pub_channel, level: Logger::WARN, secret_key: nil, timeout: 10.0)
       @redis = Redis.new(url: url)
       @sub_channel = sub_channel
       @pub_channel = pub_channel
+      @timeout = timeout
       @parser = Parser.new(secret_key)
       @res = Response.new(Redis.new(url: url), pub_channel, init_log(level), @parser)
       @callback = Callback.new(init_log(level))
@@ -19,7 +22,7 @@ module RedisRpc
     end
 
     def exec
-      @thread = Thread.new do
+      @handler = Thread.new do
         begin
           @redis.subscribe(@sub_channel) do |on|
             on.subscribe do |channel, subscriptions|
@@ -31,8 +34,7 @@ module RedisRpc
               begin
                 _args = @parser.parse(args)
                 @logger.error(ArgumentError.new("miss method uuid")) and return if _args[:uuid].nil?
-                @callback.exec_callback(_args)
-                @res.sync_callback(_args)
+                @res.sync_callback(_args, @timeout) if !@callback.exec_callback(_args)
               rescue Exception => e
                 @logger.error(e)
               end
@@ -67,7 +69,7 @@ module RedisRpc
         uuid: SecureRandom.uuid
       }
       @callback.push(request[:uuid], block) if !block.nil?
-      @res.publish(request)
+      @res.publish(request, @timeout)
     end
 
   end
