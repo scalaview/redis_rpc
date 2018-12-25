@@ -19,7 +19,7 @@ module RedisRpc
       request_str = @parser.pack(request.to_json)
       @redis.publish(@channel, request_str)
       @sync_handlers[request[:uuid]] = SyncHandler.new(@redis, request[:method], @parser, timeout)
-      @sync_handlers[:uuid]
+      @sync_handlers[request[:uuid]]
     end
 
     def sync_callback(args, timeout=5)
@@ -40,8 +40,6 @@ module RedisRpc
   class SyncHandler
 
     SLEEP_TIME = 0.01
-    attr_accessor :response, :lock, :condition
-
     def initialize(redis, _method, parser, timeout=30)
       @redis = redis
       @_method = _method
@@ -70,13 +68,18 @@ module RedisRpc
     # end
 
     def sync
-      lock.synchronize { condition.wait(lock) }
-      response
+      @lock.synchronize { @condition.wait(@lock) }
+      if !@response.nil?
+        return @response[:result]
+      elsif !@response[:error].nil?
+        raise(FunctionCallbackError.new(@response[:error]))
+      end
+      @response
     end
 
     def release(res)
-      response = res
-      lock.synchronize { condition.signal }
+      @response = res
+      @lock.synchronize { @condition.signal }
     end
 
   end
