@@ -76,7 +76,7 @@ module RedisRpc
 
     def release(res)
       response = res
-      lock.synchronize { condition.wait(lock) }
+      lock.synchronize { condition.signal }
     end
 
   end
