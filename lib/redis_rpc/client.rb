@@ -14,6 +14,7 @@ module RedisRpc
       @redis = Redis.new(url: url)
       @sub_channel = sub_channel
       @pub_channel = pub_channel
+      @level = level
       @timeout = timeout
       @parser = Parser.new(secret_key)
       @res = Response.new(Redis.new(url: url), pub_channel, init_log(level), @parser)
@@ -30,11 +31,11 @@ module RedisRpc
             end
 
             on.message do |channel, args|
-              @logger.info("##{channel}: #{args}")
+              @logger.info("##{channel}: #{args}") if @level <= Logger::INFO
               begin
                 _args = @parser.parse(args)
                 @logger.error(ArgumentError.new("miss method uuid")) and return if _args[:uuid].nil?
-                @res.sync_callback(_args, @timeout) if !@callback.exec_callback(_args)
+                @res.sync_callback(_args) if !@callback.exec_callback(_args)
               rescue Exception => e
                 @logger.error(e)
               end

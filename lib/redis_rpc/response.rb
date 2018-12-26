@@ -11,18 +11,22 @@ module RedisRpc
       @channel = channel
       @logger = logger
       @parser = parser
+      @sync_handlers = {}
     end
 
     def publish(request, timeout)
       request_str = @parser.pack(request.to_json)
       @redis.publish(@channel, request_str)
-      SyncHandler.new(@redis, request[:uuid], request[:method], @parser.secret_key, timeout)
+      @sync_handlers[request[:uuid]] = SyncHandler.new(@parser.secret_key, request[:method], timeout)
+      Thread.new(@sync_handlers, request[:uuid], timeout) {|handlers, uuid, t| sleep(t+3);  handlers.delete(uuid) }
+      @sync_handlers[request[:uuid]]
     end
 
-    def sync_callback(args, timeout=5)
-        # {uuid: uuid, _method: method, result: result, error: error}
-        @redis.set(args[:uuid], @parser.pack(args.to_json))
-        @redis.expire(args[:uuid], timeout.to_i)
+    def sync_callback(args)
+      # {uuid: uuid, _method: method, result: result, error: error}
+      unless (sync_handler = @sync_handlers.delete(args[:uuid])).nil?
+        sync_handler.release(args)
+      end
     end
 
     def catch(uuid, e)
@@ -35,31 +39,28 @@ module RedisRpc
 
   class SyncHandler
 
-    SLEEP_TIME = 0.01
-
-    def initialize(redis, uuid, _method, secret_key, timeout=30)
-      @redis = redis
-      @uuid = uuid
-      @_method = _method
-      @expires_at = Time.now + timeout
+    def initialize(secret_key, _method, timeout=10)
       @parser = Parser.new(secret_key)
+      @_method = _method
+      @timeout = timeout
+      @lock = Mutex.new
+      @condition = ConditionVariable.new
     end
 
     def sync
-      while Time.now <= @expires_at
-        result = @redis.get(@uuid)
-        if !result.nil?
-          @redis.del(@uuid)
-          _args = @parser.parse(result)
-          if !_args[:result].nil?
-            return _args[:result]
-          elsif !_args[:error].nil?
-            raise(FunctionCallbackError.new(_args[:error]))
-          end
-        end
-        sleep SLEEP_TIME
+      @lock.synchronize { @condition.wait(@lock, @timeout) }
+      if @response.nil?
+        raise(Timeout::Error.new("method: #{@_method} wait for timeout #{@timeout}s"))
+      elsif !@response[:result].nil?
+        return @response[:result]
+      elsif !@response[:error].nil?
+        raise(FunctionCallbackError.new(@response[:error]))
       end
-      raise(Timeout::Error.new("method: #{@_method} wait for timeout"))
+    end
+
+    def release(res)
+      @response = res
+      @lock.synchronize { @condition.signal }
     end
 
   end

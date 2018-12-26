@@ -13,6 +13,7 @@ module RedisRpc
       @redis = Redis.new(url: url)
       @sub_channel = sub_channel
       @pub_channel = pub_channel
+      @level = level
       @timeout = timeout
       @parser = Parser.new(secret_key)
       @logic = Logic.new(url, front_object, pub_channel, init_log(level), @parser)
@@ -33,7 +34,7 @@ module RedisRpc
           end
 
           on.message do |channel, args|
-            @logger.info("##{channel}: #{args}")
+            @logger.info("##{channel}: #{args}") if @level <= Logger::INFO
             @logic.exec(args, @timeout)
           end
           on.unsubscribe do |channel, subscriptions|
